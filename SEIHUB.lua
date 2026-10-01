@@ -29,7 +29,7 @@ local entry = Scripts[game.GameId]
 
 if not entry then
     getgenv().__UniLoader = nil
-    Players.LocalPlayer:Kick("ไม่ซัพพอร์ตแมพนี้")
+    Players.LocalPlayer:Kick("Map Not Supported")
     return
 end
 
