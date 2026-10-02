@@ -10,7 +10,7 @@ local ICON = "rbxassetid://99118312841228"
 local Scripts = {
     [994732206] = {
         name = "Blox Fruits",
-        url = "https://api.jnkie.com/api/v1/luascripts/public/64ab49bd8e2783d20595f5b70f2d81debd338648a4b8343056c0add3dbeb38f2/download",
+        url = "https://api.jnkie.com/api/v1/luascripts/public/7066270102f5b648ad248cd330904b6b75428e5d0113494072fdcecf4fa50f61/download",
     },
 }
 
