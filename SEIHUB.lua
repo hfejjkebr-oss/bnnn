@@ -12,6 +12,11 @@ local Scripts = {
         name = "Blox Fruits",
         url = "https://api.jnkie.com/api/v1/luascripts/public/7066270102f5b648ad248cd330904b6b75428e5d0113494072fdcecf4fa50f61/download",
     },
+
+    [3756501373] = {
+        name = "MeMe Sea",
+        url = "https://api.jnkie.com/api/v1/luascripts/public/51fba4670166d0b32677ed7955d631771520555be2f5424bbaab5aae9a4a883d/download",
+    },
 }
 
 local function notify(title, text, duration)
