@@ -16,7 +16,7 @@ local Scripts = {
     [3756501373] = {
         name = "MeMe Sea",
         url = "https://api.jnkie.com/api/v1/luascripts/public/51fba4670166d0b32677ed7955d631771520555be2f5424bbaab5aae9a4a883d/download",
-        kaitun_url = "https://api.jnkie.com/api/v1/luascripts/public/54a1d45eff1f2787b6149f05221874cb8e2ecc35ad8bd62efadf94aa7a1c73c2/download",
+        kaitun_url = "https://api.jnkie.com/api/v1/luascripts/public/46b40e22155067b0ae4d002adda4abf73fcefef8d6a323a8b4a57b71705948b9/download",
     },
 }
 
