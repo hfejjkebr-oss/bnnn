@@ -28,6 +28,8 @@
         Sec:AddInput   { Name, Description, Default, Placeholder, Flag, Callback(text) }
         Sec:AddKeybind { Name, Description, Default(Enum.KeyCode), Flag, Callback(), OnChange(key) }
         Sec:AddLabel   (text)
+        Sec:AddCombo   { Name, Description, Default(bool), Modes={"Instant","Hold"}, Mode, Delay, Min, Max, Step, Flag, Callback(enabled, mode, delay) }
+                       -- แถวรวม: สวิตช์ + ตัวเลือกโหมด + ตัวเลข (เหมือนแถว Skill Z / Skill X ในรูป)
 
         ทุก element คืน object: .Value / :Set(v) / .Item   ,  ค่าทั้งหมดอยู่ที่ Win.Flags[Flag].Value
         Win:Notify{Title,Content,Duration}  Win:Show() Win:Hide() Win:Toggle() Win:Destroy()
@@ -41,23 +43,23 @@ local HttpService      = game:GetService("HttpService")
 local CoreGui          = game:GetService("CoreGui")
 local LP               = Players.LocalPlayer
 
-local Lib = { Version = "1.1.0", Flags = {} }
+local Lib = { Version = "1.2.0", Flags = {} }
 Lib.Options = Lib.Flags
 local Window, Tab, Section = {}, {}, {}
 Window.__index, Tab.__index, Section.__index = Window, Tab, Section
 
 local Theme = {
-	Window  = Color3.fromRGB(20, 25, 44),
-	Sidebar = Color3.fromRGB(24, 30, 52),
-	Card    = Color3.fromRGB(28, 35, 62),
-	Input   = Color3.fromRGB(19, 24, 42),
-	Divider = Color3.fromRGB(40, 48, 80),
-	Stroke  = Color3.fromRGB(45, 54, 88),
+	Window  = Color3.fromRGB(17, 22, 41),
+	Sidebar = Color3.fromRGB(22, 28, 50),
+	Card    = Color3.fromRGB(27, 34, 61),
+	Input   = Color3.fromRGB(16, 21, 39),
+	Divider = Color3.fromRGB(38, 46, 79),
+	Stroke  = Color3.fromRGB(50, 60, 100),
 	Text    = Color3.fromRGB(238, 241, 250),
 	Sub     = Color3.fromRGB(190, 197, 218),
 	Muted   = Color3.fromRGB(128, 138, 168),
 	Off     = Color3.fromRGB(58, 66, 98),
-	Hover   = Color3.fromRGB(36, 44, 74),
+	Hover   = Color3.fromRGB(37, 46, 80),
 	Accent  = Color3.fromRGB(59, 130, 246),
 }
 
@@ -197,9 +199,17 @@ function Lib:CreateWindow(cfg)
 		Size = UDim2.fromOffset(size.X, size.Y), BackgroundColor3 = T.Window, BorderSizePixel = 0,
 		ClipsDescendants = true, Parent = gui,
 	})
-	corner(root, 12); stroke(root, T.Stroke, 1)
+	corner(root, 14)
+	local rootStroke = stroke(root, WHITE, 1.4)
+	local rootGrad = create("UIGradient", { Rotation = 135, Parent = rootStroke })
+	local function paintRootStroke()
+		rootGrad.Color = ColorSequence.new(T.Accent:Lerp(WHITE, .1), T.Stroke:Lerp(T.Accent, .15), T.Stroke)
+	end
+	paintRootStroke()
+	table.insert(self._acc, paintRootStroke)
+	create("UIGradient", { Rotation = 125, Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(196, 205, 232)), Parent = root })
 	local scaleObj = create("UIScale", { Parent = root })
-	self._root = root
+	self._root, self._scaleObj = root, scaleObj
 
 	local function updateScale()
 		local cam = workspace.CurrentCamera
@@ -271,7 +281,7 @@ function Lib:CreateWindow(cfg)
 	})
 
 	local leftGrp = create("Frame", {
-		Position = UDim2.fromOffset(12, 0), Size = UDim2.new(1, -184, 1, 0), BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(12, 0), Size = UDim2.new(1, -196, 1, 0), BackgroundTransparency = 1,
 		ClipsDescendants = true, Parent = top,
 	})
 	local function navBtn(x, txt)
@@ -306,16 +316,27 @@ function Lib:CreateWindow(cfg)
 
 	-- search
 	local sBox = create("Frame", {
-		AnchorPoint = Vector2.new(1, .5), Position = UDim2.new(1, -14, .5, 0), Size = UDim2.fromOffset(150, 28),
+		AnchorPoint = Vector2.new(1, .5), Position = UDim2.new(1, -14, .5, 0), Size = UDim2.fromOffset(164, 30),
 		BackgroundColor3 = T.Input, BorderSizePixel = 0, Parent = top,
 	})
-	corner(sBox, 7); stroke(sBox, T.Stroke, 1)
+	corner(sBox, 8)
+	local sStroke = stroke(sBox, T.Stroke, 1)
+	do -- ไอคอนแว่นขยาย (วาดด้วย Frame ไม่พึ่งฟอนต์)
+		local mg = create("Frame", { Position = UDim2.fromOffset(11, 9), Size = UDim2.fromOffset(10, 10), BackgroundTransparency = 1, Parent = sBox })
+		corner(mg, 5); stroke(mg, T.Muted, 1.4)
+		create("Frame", {
+			AnchorPoint = Vector2.new(.5, .5), Position = UDim2.fromOffset(22, 21), Size = UDim2.fromOffset(6, 2), Rotation = 45,
+			BackgroundColor3 = T.Muted, BorderSizePixel = 0, Parent = sBox,
+		})
+	end
 	local search = create("TextBox", {
-		Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -16, 1, 0), BackgroundTransparency = 1, Text = "",
+		Position = UDim2.fromOffset(30, 0), Size = UDim2.new(1, -36, 1, 0), BackgroundTransparency = 1, Text = "",
 		PlaceholderText = "Search", PlaceholderColor3 = T.Muted, ClearTextOnFocus = false, Font = FONT, TextSize = 12,
 		TextColor3 = T.Text, TextXAlignment = Enum.TextXAlignment.Left, Parent = sBox,
 	})
 	self._search = search
+	search.Focused:Connect(function() tw(sStroke, .15, { Color = T.Accent }) end)
+	search.FocusLost:Connect(function() tw(sStroke, .15, { Color = T.Stroke }) end)
 
 	-- traffic lights
 	local lights = create("Frame", {
@@ -436,7 +457,14 @@ end
 
 function Window:SetTitle(t) self.Name = t; self._titleLbl.Text = t end
 function Window:SetSubtitle(t) self._fixedSub = t; self._subLbl.Text = t or (self._active and self._active.Name or "") end
-function Window:Show() self._root.Visible = true; self.Minimized = false; self._refreshFB() end
+function Window:Show()
+	local sc = self._scaleObj
+	self._updateScale()
+	local target = sc.Scale
+	self._root.Visible = true; self.Minimized = false; self._refreshFB()
+	sc.Scale = target * .93
+	TS:Create(sc, TweenInfo.new(.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = target }):Play()
+end
 function Window:Hide() self._root.Visible = false; self.Minimized = true; self._refreshFB() end
 function Window:Minimize() self:Toggle() end
 
@@ -499,7 +527,7 @@ function Window:Notify(o)
 		Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = T.Card,
 		BorderSizePixel = 0, Parent = self._toasts,
 	})
-	corner(t, 8); stroke(t, T.Stroke, 1)
+	corner(t, 10); stroke(t, T.Accent:Lerp(T.Stroke, .45), 1.2)
 	create("UIPadding", {
 		PaddingTop = UDim.new(0, 10), PaddingBottom = UDim.new(0, 10), PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12), Parent = t,
 	})
@@ -627,7 +655,7 @@ function Window:AddTab(o)
 		self._cats[catName] = cat
 		if catName ~= "" then
 			local lbl = create("TextLabel", {
-				BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 28), Text = catName, Font = FONT_M, TextSize = 11,
+				BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 28), Text = catName, Font = FONT_M, TextSize = 10,
 				TextColor3 = T.Muted, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = cat.idx * 1000, Parent = self._tabList,
 			})
 			create("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingTop = UDim.new(0, 10), Parent = lbl })
@@ -637,10 +665,13 @@ function Window:AddTab(o)
 
 	local tab = setmetatable({ _win = self, Name = o.Name or "Tab", _sections = {}, _elems = {} }, Tab)
 	local btn = create("TextButton", {
-		Name = tab.Name, Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = T.Hover, BackgroundTransparency = 1,
+		Name = tab.Name, Size = UDim2.new(1, 0, 0, 33), BackgroundColor3 = T.Hover, BackgroundTransparency = 1,
 		Text = "", AutoButtonColor = false, LayoutOrder = cat.idx * 1000 + cat.n, Parent = self._tabList,
 	})
-	corner(btn, 7)
+	corner(btn, 8)
+	local selGrad = create("UIGradient", {
+		Rotation = 0, Enabled = false, Color = ColorSequence.new(WHITE, Color3.fromRGB(190, 208, 255)), Parent = btn,
+	})
 	local x = 12
 	local ic = makeIcon(btn, o.Icon, 16, T.Sub)
 	if ic then ic.Position = UDim2.new(0, 10, .5, -8); x = 34 end
@@ -653,8 +684,10 @@ function Window:AddTab(o)
 	table.insert(self._acc, function() tab:_style(self._active == tab) end)
 
 	function tab:_style(on)
+		selGrad.Enabled = on
 		btn.BackgroundColor3 = on and T.Accent or T.Hover
 		btn.BackgroundTransparency = on and 0 or 1
+		lbl.Font = on and FONT_B or FONT_M
 		lbl.TextColor3 = on and WHITE or T.Sub
 		if ic then
 			if ic:IsA("ImageLabel") then ic.ImageColor3 = on and WHITE or T.Sub else ic.TextColor3 = on and WHITE or T.Sub end
@@ -711,7 +744,7 @@ function Tab:AddSection(o)
 		BackgroundColor3 = T.Card, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 		ClipsDescendants = true, LayoutOrder = 2, Parent = root,
 	})
-	corner(card, 9); stroke(card, T.Divider, 1)
+	corner(card, 10); stroke(card, T.Divider, 1)
 	create("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Parent = card })
 	sec.root, sec._card = root, card
 	table.insert(self._sections, sec)
@@ -722,7 +755,7 @@ function Tab:_default()
 	if not self._def then self._def = self:AddSection({}) end
 	return self._def
 end
-for _, m in ipairs({ "AddToggle", "AddNumber", "AddSlider", "AddDropdown", "AddButton", "AddInput", "AddKeybind", "AddLabel", "AddParagraph", "AddTextbox", "AddBind", "AddColorpicker" }) do
+for _, m in ipairs({ "AddToggle", "AddNumber", "AddSlider", "AddDropdown", "AddButton", "AddInput", "AddKeybind", "AddLabel", "AddParagraph", "AddTextbox", "AddBind", "AddColorpicker", "AddCombo" }) do
 	Tab[m] = function(self, ...)
 		local s = self:_default()
 		return s[m](s, ...)
@@ -842,19 +875,21 @@ function Section:AddToggle(a, b)
 	local win = self._win; local T = win.T
 	local item, row, holder = self:_item(o.Name or "Toggle", o.Description, 44)
 	local track = create("Frame", {
-		AnchorPoint = Vector2.new(1, .5), Position = UDim2.fromScale(1, .5), Size = UDim2.fromOffset(40, 22),
+		AnchorPoint = Vector2.new(1, .5), Position = UDim2.fromScale(1, .5), Size = UDim2.fromOffset(38, 20),
 		BackgroundColor3 = T.Off, BorderSizePixel = 0, Parent = holder,
 	})
-	corner(track, 11)
+	corner(track, 10)
+	local tStroke = stroke(track, T.Stroke, 1)
 	local knob = create("Frame", {
-		AnchorPoint = Vector2.new(0, .5), Position = UDim2.new(0, 3, .5, 0), Size = UDim2.fromOffset(16, 16),
+		AnchorPoint = Vector2.new(0, .5), Position = UDim2.new(0, 3, .5, 0), Size = UDim2.fromOffset(14, 14),
 		BackgroundColor3 = WHITE, BorderSizePixel = 0, Parent = track,
 	})
-	corner(knob, 8)
+	corner(knob, 7)
 	local obj = { Value = false, Item = item }
 	local function render()
-		tw(track, .15, { BackgroundColor3 = obj.Value and T.Accent or T.Off })
-		tw(knob, .15, { Position = obj.Value and UDim2.new(1, -19, .5, 0) or UDim2.new(0, 3, .5, 0) })
+		tw(track, .18, { BackgroundColor3 = obj.Value and T.Accent or T.Off })
+		tw(tStroke, .18, { Color = obj.Value and T.Accent:Lerp(WHITE, .3) or T.Stroke })
+		tw(knob, .18, { Position = obj.Value and UDim2.new(1, -17, .5, 0) or UDim2.new(0, 3, .5, 0) })
 	end
 	function obj:Set(v, silent)
 		self.Value = v and true or false
@@ -905,8 +940,10 @@ function Section:AddNumber(a, b)
 	local function spin(y, txt, delta)
 		local b = create("TextButton", {
 			Position = UDim2.new(1, -18, y, 0), Size = UDim2.new(0, 18, .5, 0), BackgroundTransparency = 1, Text = txt,
-			Font = FONT_B, TextSize = 8, TextColor3 = T.Sub, AutoButtonColor = false, Parent = box,
+			Font = FONT_B, TextSize = 8, TextColor3 = T.Muted, AutoButtonColor = false, Parent = box,
 		})
+		b.MouseEnter:Connect(function() b.TextColor3 = T.Text end)
+		b.MouseLeave:Connect(function() b.TextColor3 = T.Muted end)
 		return b
 	end
 	local up, down = spin(0, "▲"), spin(.5, "▼")
@@ -981,6 +1018,109 @@ function Section:AddSlider(a, b)
 	end))
 	obj:Set(obj.Value, true)
 	win:_register(o.Flag, obj, o); self:_reg(item, o.Name, o.Description)
+	return obj
+end
+
+function Section:AddCombo(a, b)
+	local o = norm(a, b)
+	local win = self._win; local T = win.T
+	local modes = o.Modes or { "Instant" }
+	local min, max, step = o.Min or 0, o.Max or 60, o.Step or .1
+	local item, row, holder = self:_item(o.Name or "Combo", o.Description, 200)
+
+	-- toggle (ขวาสุด)
+	local track = create("Frame", {
+		AnchorPoint = Vector2.new(1, .5), Position = UDim2.fromScale(1, .5), Size = UDim2.fromOffset(38, 20),
+		BackgroundColor3 = T.Off, BorderSizePixel = 0, Parent = holder,
+	})
+	corner(track, 10)
+	local tStroke = stroke(track, T.Stroke, 1)
+	local knob = create("Frame", {
+		AnchorPoint = Vector2.new(0, .5), Position = UDim2.new(0, 3, .5, 0), Size = UDim2.fromOffset(14, 14),
+		BackgroundColor3 = WHITE, BorderSizePixel = 0, Parent = track,
+	})
+	corner(knob, 7)
+	local tbtn = create("TextButton", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Text = "", Parent = track })
+
+	-- กล่องตัวเลข (delay)
+	local nBox = create("Frame", {
+		AnchorPoint = Vector2.new(1, .5), Position = UDim2.new(1, -48, .5, 0), Size = UDim2.fromOffset(58, 26),
+		BackgroundColor3 = T.Input, BorderSizePixel = 0, Parent = holder,
+	})
+	corner(nBox, 6); stroke(nBox, T.Stroke, 1)
+	local nTb = create("TextBox", {
+		BackgroundTransparency = 1, Size = UDim2.new(1, -18, 1, 0), Text = "", ClearTextOnFocus = false, Font = FONT,
+		TextSize = 12, TextColor3 = T.Text, TextXAlignment = Enum.TextXAlignment.Right, Parent = nBox,
+	})
+	create("UIPadding", { PaddingRight = UDim.new(0, 3), Parent = nTb })
+
+	-- กล่องโหมด
+	local mBox = create("TextButton", {
+		AnchorPoint = Vector2.new(1, .5), Position = UDim2.new(1, -112, .5, 0), Size = UDim2.fromOffset(80, 26),
+		BackgroundColor3 = T.Input, Text = "", AutoButtonColor = false, Parent = holder,
+	})
+	corner(mBox, 6); stroke(mBox, T.Stroke, 1)
+	local mLbl = create("TextLabel", {
+		Position = UDim2.fromOffset(8, 0), Size = UDim2.new(1, -24, 1, 0), BackgroundTransparency = 1, Text = "", Font = FONT,
+		TextSize = 12, TextColor3 = T.Text, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = mBox,
+	})
+
+	local function spin(parent, y, txt)
+		return create("TextButton", {
+			Position = UDim2.new(1, -18, y, 0), Size = UDim2.new(0, 18, .5, 0), BackgroundTransparency = 1, Text = txt,
+			Font = FONT_B, TextSize = 8, TextColor3 = T.Muted, AutoButtonColor = false, ZIndex = 3, Parent = parent,
+		})
+	end
+	local nUp, nDn = spin(nBox, 0, "▲"), spin(nBox, .5, "▼")
+	local mUp, mDn = spin(mBox, 0, "▲"), spin(mBox, .5, "▼")
+
+	local mi = 1
+	if o.Mode then mi = table.find(modes, o.Mode) or 1 end
+	local obj = { Item = item, Enabled = false, Mode = modes[mi], Delay = snap(o.Delay or min, step, min, max) }
+	obj.Value = { Enabled = obj.Enabled, Mode = obj.Mode, Delay = obj.Delay }
+
+	local function render()
+		obj.Value = { Enabled = obj.Enabled, Mode = obj.Mode, Delay = obj.Delay }
+		tw(track, .18, { BackgroundColor3 = obj.Enabled and T.Accent or T.Off })
+		tw(tStroke, .18, { Color = obj.Enabled and T.Accent:Lerp(WHITE, .3) or T.Stroke })
+		tw(knob, .18, { Position = obj.Enabled and UDim2.new(1, -17, .5, 0) or UDim2.new(0, 3, .5, 0) })
+		mLbl.Text = tostring(obj.Mode)
+		nTb.Text = (step < 1) and string.format("%.1f", obj.Delay) or tostring(obj.Delay)
+	end
+	local function fire(silent)
+		render()
+		if not silent then safe(o.Callback, obj.Enabled, obj.Mode, obj.Delay); win:_changed() end
+	end
+	function obj:Set(v, silent)
+		if type(v) == "table" then
+			if v.Enabled ~= nil then self.Enabled = v.Enabled and true or false end
+			if v.Mode ~= nil and table.find(modes, v.Mode) then self.Mode = v.Mode; mi = table.find(modes, v.Mode) end
+			if v.Delay ~= nil then self.Delay = snap(tonumber(v.Delay) or self.Delay, step, min, max) end
+		else
+			self.Enabled = v and true or false
+		end
+		fire(silent)
+	end
+	function obj:Export() return { Enabled = self.Enabled, Mode = self.Mode, Delay = self.Delay } end
+	function obj:Import(d) self:Set(d) end
+
+	local function cycle(d)
+		mi = ((mi - 1 + d) % #modes) + 1
+		obj.Mode = modes[mi]; fire()
+	end
+	local function setDelay(v) obj.Delay = snap(tonumber(v) or obj.Delay, step, min, max); fire() end
+	tbtn.MouseButton1Click:Connect(function() obj.Enabled = not obj.Enabled; fire() end)
+	mBox.MouseButton1Click:Connect(function() cycle(1) end)
+	mUp.MouseButton1Click:Connect(function() cycle(-1) end)
+	mDn.MouseButton1Click:Connect(function() cycle(1) end)
+	nUp.MouseButton1Click:Connect(function() setDelay(obj.Delay + step) end)
+	nDn.MouseButton1Click:Connect(function() setDelay(obj.Delay - step) end)
+	nTb.FocusLost:Connect(function() setDelay(nTb.Text) end)
+
+	table.insert(win._acc, render)
+	render()
+	win:_register(o.Flag, obj, o); self:_reg(item, o.Name, o.Description)
+	if o.Default then obj:Set(true, true) end
 	return obj
 end
 
